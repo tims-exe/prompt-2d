@@ -1,0 +1,5 @@
+manim
+fastapi
+pydantic
+requests
+python-dotenv
