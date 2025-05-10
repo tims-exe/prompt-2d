@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import subprocess
@@ -10,7 +11,7 @@ import re
 import uuid
 import ast
 from dotenv import load_dotenv
-from manim_generator import call_llm, clean_code, fix_code
+from manim_generator import call_llm, clean_code, fix_code  # utility functions
 
 load_dotenv()
 
@@ -24,9 +25,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve static files from media directory
+app.mount("/media", StaticFiles(directory="media"), name="media")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs("temp", exist_ok=True)
+    os.makedirs("media/videos/main/480p15", exist_ok=True)
     yield
     if os.path.exists("temp"):
         shutil.rmtree("temp")
@@ -61,13 +66,14 @@ async def generate_video(prompt: Prompt):
 
         temp_dir = "temp"
         os.makedirs(temp_dir, exist_ok=True)
-        file_path = os.path.join(temp_dir, "main.py")
+        file_path = os.path.join(temp_dir, f"{uuid.uuid4().hex}.py")
         with open(file_path, "w") as f:
             f.write(code)
 
-        result = subprocess.run([
-            "manim", "-ql", file_path, scene_name
-        ], capture_output=True, text=True, timeout=120)
+        result = subprocess.run(
+            ["manim", "-ql", file_path, scene_name],
+            capture_output=True, text=True, timeout=120
+        )
 
         if result.returncode != 0:
             return JSONResponse({"error": result.stderr}, status_code=400)
@@ -77,7 +83,10 @@ async def generate_video(prompt: Prompt):
         if not os.path.exists(video_path):
             return JSONResponse({"error": f"Video not found at {video_path}"}, status_code=500)
 
-        return {"videoPath": video_path, "code": code}
+        return {
+            "videoUrl": f"/media/videos/main/480p15/{video_file}",
+            "code": code
+        }
 
     except subprocess.TimeoutExpired:
         return JSONResponse({"error": "Rendering timed out."}, status_code=408)
@@ -86,5 +95,3 @@ async def generate_video(prompt: Prompt):
     finally:
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
-        if video_path and os.path.exists(video_path):
-            os.remove(video_path)
