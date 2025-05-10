@@ -1,11 +1,11 @@
 from manim import *
 
-class CircleToSquare(Scene):
+class HelloWorld(Scene):
     def construct(self):
-        circle = Circle(color=WHITE).shift(LEFT)
-        square = Square(side_length=2, color=RED).shift(RIGHT)
+        circle = Circle(color=WHITE, fill_opacity=0).scale(1)
+        text = Text("Hello World", font_size=72, color=WHITE)
+        text.move_to(ORIGIN)
+        self.add(circle)
+        self.play(circle.animate.set_width(10), run_time=5)
+        self.play(FadeIn(text, run_time=1))
 
-        self.play(Create(circle))
-        self.play(Transform(circle, square))
-        self.play(Transform(square, circle.copy().set_color(WHITE)))
-        self.wait()
